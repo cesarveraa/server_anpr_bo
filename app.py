@@ -3,6 +3,7 @@ import openai
 import json
 import time
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware  # Importar el middleware de CORS
 from fastapi.responses import JSONResponse
 from PIL import Image
 import io
@@ -18,6 +19,14 @@ client = openai.OpenAI(
 )
 
 app = FastAPI()
+# Configuración de CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "https://demo-anpr-bo.vercel.app"],  # Permitir el origen del frontend
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 @app.get("/")
 def read_root():
     return {"message": "Servidor FastAPI en Vercel funcionando correctamente"}
