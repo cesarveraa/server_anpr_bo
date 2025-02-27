@@ -1,12 +1,12 @@
 import requests
 import json
 
-url = "http://localhost:8000/auto"
-image_path = "placa.png"  # Reemplaza con la ruta de tu imagen
+url = "https://server-anpr-bo.vercel.app/auto"
+image_path = "car_001.png"
 
 try:
     with open(image_path, "rb") as image_file:
-        files = {"file": ("placa.png", image_file, "image/png")}
+        files = {"file": ("car_001.png", image_file, "image/png")}
         response = requests.post(url, files=files)
 
     if response.status_code == 200:

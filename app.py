@@ -44,37 +44,40 @@ async def analyze_auto_image(file: UploadFile = File(...)):
                     model="Llama-3.2-90B-Vision-Instruct",
                     messages=[{
                         "role": "user",
-                        "content": [{
-                            "type": "text",
-                            "text": "Analyze the image and provide a structured JSON response with the following information, if your are not sure about any of the fields in license_plate, do not fill it and put: not detected. Ensure the response is a valid JSON object only, without additional explanation:"
-                        }, {
-                            "type": "text",
-                            "text": """
+                        "content": [ 
                             {
-                                "car": {"make": "Car brand","model": "Car model","color": "Car color"},
-                                "license_plate": {"number": "License plate number","country": "Country of the license plate","region": "Region or state of the license plate, if identifiable"},
-                                "environment": {"location_type": "Street, parking lot, highway","weather": "Sunny, rainy, cloudy","time_of_day": "Day, night, evening"},
-                                "additional_info": {"occupants_visible": "Yes or No","damage": "Any visible damage"}
+                                "type": "text",
+                                "text": "Analyze the image and provide a structured JSON response with the following information, if you are not sure about any of the fields in license_plate, do not fill it and put: not detected. Ensure the response is a valid JSON object only, without additional explanation:"
+                            }, 
+                            {
+                                "type": "text",
+                                "text": """
+                                {
+                                    "car": {"make": "Car brand","model": "Car model","color": "Car color"},
+                                    "license_plate": {"number": "License plate number","country": "Country of the license plate","region": "Region or state of the license plate, if identifiable"},
+                                    "environment": {"location_type": "Street, parking lot, highway","weather": "Sunny, rainy, cloudy","time_of_day": "Day, night, evening"},
+                                    "additional_info": {"occupants_visible": "Yes or No","damage": "Any visible damage"}
+                                }
+                                """
+                            }, 
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": image_base64}
                             }
-                            """
-                        }, {
-                            "type": "image_url",
-                            "image_url": {"url": image_base64}
-                        }]
+                        ]
                     }],
                     temperature=0.1,
                     top_p=0.1
                 )
 
-                # Imprimir la respuesta completa para depuración
                 print("Respuesta completa de Llama Vision:", response)
 
-                # Validar la estructura de la respuesta
-                if response and "choices" in response and len(response.choices) > 0:
+                # Acceder directamente al contenido sin validaciones adicionales
+                if response and response.choices and len(response.choices) > 0:
                     json_response = response.choices[0].message.content
                     print("Contenido de la respuesta:", json_response)
                     try:
-                        # Intentar convertir la respuesta a JSON de forma segura
+                        # Convertir la respuesta a JSON de forma segura
                         parsed_response = json.loads(json_response)
                         return JSONResponse(content=parsed_response)
                     except json.JSONDecodeError as e:
