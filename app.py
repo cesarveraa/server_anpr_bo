@@ -10,7 +10,7 @@ import io
 import base64
 
 # Configurar la clave de API de SambaNova
-os.environ["SAMBANOVA_API_KEY"] = "9c10738c-efac-45ff-9350-93503b69eb67"
+os.environ["SAMBANOVA_API_KEY"] = "cd59b237-fff5-491e-9285-50034e97f626"
 
 # Inicializar el cliente de SambaNova
 client = openai.OpenAI(
