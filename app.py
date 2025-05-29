@@ -7,12 +7,21 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 import io
 import base64
-import openai
-from openai import RateLimitError, OpenAIError
 
-# Configura tu clave de OpenAI
-os.environ["OPENAI_API_KEY"] = "<TU_OPENAI_API_KEY>"
-client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+import openai
+from openai.error import RateLimitError, OpenAIError
+
+# Carga variables de entorno desde .env
+from dotenv import load_dotenv
+load_dotenv()
+
+# Obtén tu API key
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise RuntimeError("Falta la variable de entorno OPENAI_API_KEY")
+
+# Inicializa el cliente
+client = openai.OpenAI(api_key=api_key)
 
 app = FastAPI()
 
@@ -90,7 +99,7 @@ async def analyze_auto_image(file: UploadFile = File(...)):
         except RateLimitError:
             if attempt == max_retries:
                 raise HTTPException(status_code=429, detail="Rate limit excedido, inténtalo más tarde.")
-            time.sleep(2 ** attempt)  # backoff exponencial
+            time.sleep(2 ** attempt)
 
         except json.JSONDecodeError as e:
             raise HTTPException(status_code=500, detail=f"Error parsing JSON: {e}")
