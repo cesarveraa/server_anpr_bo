@@ -1,6 +1,8 @@
 import os
+import re
 import json
 import time
+import logging
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -10,22 +12,23 @@ import base64
 
 import openai
 from openai import RateLimitError, OpenAIError
-
-# Carga variables de entorno desde .env
 from dotenv import load_dotenv
-load_dotenv()
 
-# Obtén tu API key
+# — Configuración de logging —
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# — Carga de variables de entorno desde .env —
+load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     raise RuntimeError("Falta la variable de entorno OPENAI_API_KEY")
 
-# Inicializa el cliente
+# — Inicializa el cliente de OpenAI —
 client = openai.OpenAI(api_key=api_key)
 
+# — Inicializa FastAPI y CORS —
 app = FastAPI()
-
-# Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "https://demo-anpr-bo.vercel.app"],
@@ -40,10 +43,11 @@ def read_root():
 
 @app.post("/auto")
 async def analyze_auto_image(file: UploadFile = File(...)):
+    # Validar tipo de archivo
     if file.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload a JPEG or PNG image.")
 
-    # Leer y codificar la imagen
+    # Leer y codificar la imagen a data URL
     image_data = await file.read()
     image = Image.open(io.BytesIO(image_data))
     image_format = image.format.lower()
@@ -54,7 +58,8 @@ async def analyze_auto_image(file: UploadFile = File(...)):
     max_retries = 5
     for attempt in range(1, max_retries + 1):
         try:
-            response = client.chat.completions.create(
+            # Llamada a la API de OpenAI con visión
+            completion = client.chat.completions.create(
                 model="gpt-4o",  # Modelo vision-enabled de OpenAI
                 messages=[
                     {
@@ -91,21 +96,42 @@ async def analyze_auto_image(file: UploadFile = File(...)):
                 max_tokens=800
             )
 
-            # Extraer y parsear la respuesta
-            content = response.choices[0].message.content
-            parsed = json.loads(content)
+            # Obtener contenido crudo
+            raw_content = completion.choices[0].message.content
+            logger.info(f"Raw OpenAI response: {repr(raw_content)}")
+
+            # Limpiar fences Markdown si existen
+            cleaned = raw_content.strip()
+            if cleaned.startswith("```"):
+                lines = cleaned.splitlines()
+                # eliminar fence de apertura
+                lines = lines[1:]
+                # eliminar fence de cierre si existe
+                if lines and lines[-1].startswith("```"):
+                    lines = lines[:-1]
+                cleaned = "\n".join(lines)
+
+            # Parsear JSON limpio
+            try:
+                parsed = json.loads(cleaned)
+            except json.JSONDecodeError as e:
+                logger.error(f"JSONDecodeError: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error parsing cleaned JSON: {e}. Cleaned content: {repr(cleaned)}"
+                )
+
             return JSONResponse(content=parsed)
 
         except RateLimitError:
+            logger.warning(f"RateLimitError, intento {attempt}/{max_retries}")
             if attempt == max_retries:
                 raise HTTPException(status_code=429, detail="Rate limit excedido, inténtalo más tarde.")
             time.sleep(2 ** attempt)
 
-        except json.JSONDecodeError as e:
-            raise HTTPException(status_code=500, detail=f"Error parsing JSON: {e}")
-
         except OpenAIError as e:
+            logger.error(f"OpenAIError: {e}")
             raise HTTPException(status_code=500, detail=f"OpenAI API error: {e}")
 
-    # Si sale del bucle sin retorno
+    # Tras todos los intentos fallidos
     raise HTTPException(status_code=500, detail="No se pudo procesar la imagen tras varios intentos.")

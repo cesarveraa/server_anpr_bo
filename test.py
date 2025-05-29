@@ -1,7 +1,7 @@
 import requests
 import json
 
-url = "https://server-anpr-bo.vercel.app/auto"
+url = "http://127.0.0.1:8000/auto"  # Cambia a la URL de tu servidor FastAPI
 image_path = "car_001.png"
 
 try:
