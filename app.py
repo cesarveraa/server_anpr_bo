@@ -9,7 +9,7 @@ import io
 import base64
 
 import openai
-from openai.error import RateLimitError, OpenAIError
+from openai import RateLimitError, OpenAIError
 
 # Carga variables de entorno desde .env
 from dotenv import load_dotenv
